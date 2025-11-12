@@ -1,0 +1,294 @@
+#!/usr/bin/env bash
+
+# findcmd - Command History Search Tool
+# Quickly find and retrieve commands from your shell history
+
+VERSION="1.0.0"
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+MAGENTA='\033[0;35m'
+CYAN='\033[0;36m'
+BOLD='\033[1m'
+NC='\033[0m' # No Color
+
+# Default settings
+CASE_SENSITIVE=false
+MAX_RESULTS=50
+SHOW_DUPLICATES=false
+COPY_TO_CLIPBOARD=false
+INTERACTIVE=false
+
+# Function to print usage
+print_usage() {
+    cat << EOF
+${BOLD}findcmd${NC} - Command History Search Tool v${VERSION}
+
+${BOLD}USAGE:${NC}
+    findcmd [OPTIONS] <search_term> [additional_terms...]
+
+${BOLD}DESCRIPTION:${NC}
+    Search through your shell command history and display matching commands.
+    Supports multiple search terms and various filtering options.
+
+${BOLD}OPTIONS:${NC}
+    -c, --case-sensitive    Enable case-sensitive search (default: case-insensitive)
+    -n, --max <number>      Maximum number of results to display (default: 50)
+    -d, --duplicates        Show duplicate commands (default: hide duplicates)
+    -i, --interactive       Interactive mode - select and copy command
+    -h, --help              Display this help message
+    -v, --version           Display version information
+
+${BOLD}EXAMPLES:${NC}
+    ${CYAN}findcmd redis${NC}
+        Find all commands containing 'redis'
+
+    ${CYAN}findcmd docker ps${NC}
+        Find commands containing both 'docker' AND 'ps'
+
+    ${CYAN}findcmd -c Redis${NC}
+        Case-sensitive search for 'Redis'
+
+    ${CYAN}findcmd -n 10 git${NC}
+        Show only the 10 most recent commands with 'git'
+
+    ${CYAN}findcmd -i npm${NC}
+        Interactive mode to select and copy a command
+
+${BOLD}SUPPORTED SHELLS:${NC}
+    - Bash (uses ~/.bash_history)
+    - Zsh (uses ~/.zsh_history or ~/.histfile)
+
+${BOLD}NOTES:${NC}
+    - Results are sorted by most recent first
+    - By default, duplicate commands are hidden
+    - History file location is auto-detected based on your shell
+
+EOF
+}
+
+# Function to print version
+print_version() {
+    echo "findcmd version ${VERSION}"
+}
+
+# Function to detect history file
+detect_history_file() {
+    if [[ -n "$ZSH_VERSION" ]] || [[ "$SHELL" == *"zsh"* ]]; then
+        # Zsh shell
+        if [[ -f "$HOME/.zsh_history" ]]; then
+            echo "$HOME/.zsh_history"
+        elif [[ -f "$HOME/.histfile" ]]; then
+            echo "$HOME/.histfile"
+        elif [[ -f "$HISTFILE" ]]; then
+            echo "$HISTFILE"
+        else
+            echo "$HOME/.zsh_history"
+        fi
+    else
+        # Bash or other shells
+        if [[ -f "$HOME/.bash_history" ]]; then
+            echo "$HOME/.bash_history"
+        elif [[ -f "$HISTFILE" ]]; then
+            echo "$HISTFILE"
+        else
+            echo "$HOME/.bash_history"
+        fi
+    fi
+}
+
+# Function to clean zsh history format
+clean_history_line() {
+    local line="$1"
+    # Remove zsh timestamp format (: 1234567890:0;command)
+    if [[ "$line" =~ ^:[[:space:]]*[0-9]+:[0-9]+\;(.*)$ ]]; then
+        echo "${BASH_REMATCH[1]}"
+    else
+        echo "$line"
+    fi
+}
+
+# Function to search history
+search_history() {
+    local search_terms=("$@")
+    local history_file=$(detect_history_file)
+
+    if [[ ! -f "$history_file" ]]; then
+        echo -e "${RED}Error: History file not found: $history_file${NC}" >&2
+        return 1
+    fi
+
+    # Build grep pattern
+    local grep_opts="-i"
+    if [[ "$CASE_SENSITIVE" == true ]]; then
+        grep_opts=""
+    fi
+
+    # Read history file and search
+    local results=()
+    local seen=()
+
+    while IFS= read -r line; do
+        # Clean the line (remove zsh timestamps, etc.)
+        local cleaned_line=$(clean_history_line "$line")
+
+        # Skip empty lines
+        [[ -z "$cleaned_line" ]] && continue
+
+        # Check if line matches all search terms
+        local matches=true
+        for term in "${search_terms[@]}"; do
+            if [[ "$CASE_SENSITIVE" == true ]]; then
+                if [[ ! "$cleaned_line" =~ $term ]]; then
+                    matches=false
+                    break
+                fi
+            else
+                # Use grep for case-insensitive matching to avoid encoding issues
+                if ! echo "$cleaned_line" | grep -qi "$term" 2>/dev/null; then
+                    matches=false
+                    break
+                fi
+            fi
+        done
+
+        if [[ "$matches" == true ]]; then
+            # Check for duplicates
+            if [[ "$SHOW_DUPLICATES" == false ]]; then
+                local found=false
+                for seen_cmd in "${seen[@]}"; do
+                    if [[ "$seen_cmd" == "$cleaned_line" ]]; then
+                        found=true
+                        break
+                    fi
+                done
+
+                if [[ "$found" == false ]]; then
+                    results+=("$cleaned_line")
+                    seen+=("$cleaned_line")
+                fi
+            else
+                results+=("$cleaned_line")
+            fi
+        fi
+    done < "$history_file"
+
+    # Reverse array to show most recent first
+    local reversed=()
+    for ((i=${#results[@]}-1; i>=0; i--)); do
+        reversed+=("${results[$i]}")
+    done
+
+    # Limit results
+    local count=0
+    local final_results=()
+    for cmd in "${reversed[@]}"; do
+        if [[ $count -ge $MAX_RESULTS ]]; then
+            break
+        fi
+        final_results+=("$cmd")
+        ((count++))
+    done
+
+    # Print results
+    if [[ ${#final_results[@]} -eq 0 ]]; then
+        echo -e "${YELLOW}No commands found matching: ${search_terms[*]}${NC}"
+        return 1
+    fi
+
+    echo -e "${GREEN}Found ${#final_results[@]} command(s) matching: ${CYAN}${search_terms[*]}${NC}\n"
+
+    if [[ "$INTERACTIVE" == true ]]; then
+        # Interactive mode
+        for i in "${!final_results[@]}"; do
+            echo -e "${MAGENTA}[$((i+1))]${NC} ${final_results[$i]}"
+        done
+
+        echo ""
+        echo -e "${BOLD}Enter number to copy to clipboard (or press Enter to cancel):${NC} "
+        read -r selection
+
+        if [[ -n "$selection" ]] && [[ "$selection" =~ ^[0-9]+$ ]]; then
+            local idx=$((selection-1))
+            if [[ $idx -ge 0 ]] && [[ $idx -lt ${#final_results[@]} ]]; then
+                local selected_cmd="${final_results[$idx]}"
+
+                # Try to copy to clipboard
+                if command -v pbcopy &> /dev/null; then
+                    echo -n "$selected_cmd" | pbcopy
+                    echo -e "${GREEN}✓ Copied to clipboard:${NC} $selected_cmd"
+                elif command -v xclip &> /dev/null; then
+                    echo -n "$selected_cmd" | xclip -selection clipboard
+                    echo -e "${GREEN}✓ Copied to clipboard:${NC} $selected_cmd"
+                elif command -v xsel &> /dev/null; then
+                    echo -n "$selected_cmd" | xsel --clipboard
+                    echo -e "${GREEN}✓ Copied to clipboard:${NC} $selected_cmd"
+                else
+                    echo -e "${YELLOW}Clipboard not available. Command:${NC}"
+                    echo "$selected_cmd"
+                fi
+            else
+                echo -e "${RED}Invalid selection${NC}"
+            fi
+        fi
+    else
+        # Regular mode
+        for i in "${!final_results[@]}"; do
+            echo -e "${MAGENTA}[$((i+1))]${NC} ${final_results[$i]}"
+        done
+    fi
+}
+
+# Parse command line arguments
+SEARCH_TERMS=()
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -h|--help)
+            print_usage
+            exit 0
+            ;;
+        -v|--version)
+            print_version
+            exit 0
+            ;;
+        -c|--case-sensitive)
+            CASE_SENSITIVE=true
+            shift
+            ;;
+        -n|--max)
+            MAX_RESULTS="$2"
+            shift 2
+            ;;
+        -d|--duplicates)
+            SHOW_DUPLICATES=true
+            shift
+            ;;
+        -i|--interactive)
+            INTERACTIVE=true
+            shift
+            ;;
+        -*)
+            echo -e "${RED}Error: Unknown option: $1${NC}" >&2
+            echo "Use 'findcmd --help' for usage information"
+            exit 1
+            ;;
+        *)
+            SEARCH_TERMS+=("$1")
+            shift
+            ;;
+    esac
+done
+
+# Check if search terms provided
+if [[ ${#SEARCH_TERMS[@]} -eq 0 ]]; then
+    echo -e "${RED}Error: No search term provided${NC}" >&2
+    echo "Use 'findcmd --help' for usage information"
+    exit 1
+fi
+
+# Perform search
+search_history "${SEARCH_TERMS[@]}"
