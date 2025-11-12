@@ -80,7 +80,7 @@ findcmd -i git              # Interactive mode
    findcmd --version
    ```
 
-   If you see "findcmd version 1.0.1", you're all set! 🎉
+   If you see "findcmd version 1.0.1", you're all set!
 
 ### Manual Install
 
@@ -531,4 +531,3 @@ Created to make command-line history searching easier and more efficient.
 
 ---
 
-**Happy searching! 🔍**
