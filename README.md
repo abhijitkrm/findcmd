@@ -516,18 +516,5 @@ MIT License - feel free to use and modify as needed.
 
 Created to make command-line history searching easier and more efficient.
 
-## Changelog
 
-### Version 1.0.0
-- Initial release
-- Basic search functionality
-- Interactive mode
-- Multi-term search
-- Case-sensitive option
-- Duplicate filtering
-- Color output
-- Bash and Zsh support
-- Linux and macOS support
-
----
 
