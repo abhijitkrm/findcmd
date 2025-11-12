@@ -1,6 +1,17 @@
-# findcmd - Command History Search Tool
+# findcmd
 
 A powerful command-line tool to quickly search and retrieve commands from your shell history. Never scroll through your history again!
+
+## Quick Start
+
+```bash
+# Install
+git clone https://github.com/abhijitkrm/findcmd.git ~/find-cmd && cd ~/find-cmd && ./install.sh
+
+# Use
+findcmd docker              # Find docker commands
+findcmd -i git              # Interactive mode
+```
 
 ## Features
 
@@ -42,7 +53,7 @@ A powerful command-line tool to quickly search and retrieve commands from your s
 1. **Clone or download this repository**:
    ```bash
    cd ~
-   git clone <repository-url> find-cmd
+   git clone https://github.com/abhijitkrm/findcmd.git find-cmd
    # OR download and extract the ZIP file
    ```
 
@@ -69,7 +80,7 @@ A powerful command-line tool to quickly search and retrieve commands from your s
    findcmd --version
    ```
 
-   If you see "findcmd version 1.0.0", you're all set! 🎉
+   If you see "findcmd version 1.0.1", you're all set! 🎉
 
 ### Manual Install
 

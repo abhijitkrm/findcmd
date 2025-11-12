@@ -5,6 +5,8 @@ All notable changes to the findcmd project will be documented in this file.
 ## [1.0.1] - 2024-11-12
 
 ### Fixed
+- **Bash 3.2 compatibility**: Fixed "bad substitution" error on macOS by replacing `${var,,}` syntax with portable grep-based solution
+- **Encoding/locale issue**: Fixed "Illegal byte sequence" error when encountering non-UTF-8 characters in history by using `grep -qi` instead of `tr`
 - **Improved shell detection in installer**: Added multiple fallback methods to detect the user's shell
   - Now tries `$SHELL` variable first
   - Falls back to checking parent process if `$SHELL` is unreliable
@@ -15,10 +17,12 @@ All notable changes to the findcmd project will be documented in this file.
 - **Better error messages**: Installer now provides exact commands to manually add PATH if auto-detection fails
 - **Installation documentation**: Added clearer instructions emphasizing the use of `./install.sh` instead of `sh install.sh`
 - **Troubleshooting guide**: Added dedicated section for "Unknown shell" and PATH configuration issues
+- **Quick Start section**: Added one-liner installation command in README
 
 ### Changed
 - Installer now shows specific copy-paste commands for adding PATH based on detected config files
 - More informative messages when shell auto-detection fails
+- Case-insensitive search now uses `grep` instead of bash string manipulation for better compatibility
 
 ## [1.0.0] - 2024-11-12
 

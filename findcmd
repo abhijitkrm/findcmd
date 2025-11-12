@@ -3,7 +3,7 @@
 # findcmd - Command History Search Tool
 # Quickly find and retrieve commands from your shell history
 
-VERSION="1.0.0"
+VERSION="1.0.1"
 
 # Colors for output
 RED='\033[0;31m'

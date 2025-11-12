@@ -5,10 +5,11 @@ Get up and running with `findcmd` in 2 minutes!
 ## Installation (30 seconds)
 
 ```bash
-# 1. Navigate to the find-cmd directory
-cd find-cmd
+# 1. Clone the repository
+git clone https://github.com/abhijitkrm/findcmd.git ~/find-cmd
+cd ~/find-cmd
 
-# 2. Make installer executable and run it
+# 2. Run the installer
 chmod +x install.sh
 ./install.sh
 
